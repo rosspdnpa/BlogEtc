@@ -27,13 +27,16 @@ class Post extends Model implements SearchResultInterface
      */
     public $casts = [
         'posted_at' => 'datetime',
+        'unpublish_on' => 'datetime',
         'is_published' => 'boolean',
+        'is_featured' => 'boolean',
     ];
     /**
      * @var array
      */
     public $dates = [
         'posted_at',
+        'unpublish_on',
     ];
     /**
      * @var array
@@ -48,6 +51,8 @@ class Post extends Model implements SearchResultInterface
         'slug',
         'use_view_file',
         'is_published',
+        'unpublish_on',
+        'is_featured',
         'posted_at',
     ];
 
@@ -69,6 +74,15 @@ class Post extends Model implements SearchResultInterface
     {
         return $this->is_published && $this->posted_at->lte(Carbon::now());
     }
+
+	public function getIsPublishedAttribute() {
+		$is_published_setting = $this->getRawOriginal('is_published');
+		$unpublish = $this->getRawOriginal('unpublish_on');
+		if($unpublish && $unpublish < date('d/m/Y H:i:s')) {
+			return FALSE;
+		}
+		return $is_published_setting;
+	}
 
     /**
      * Return the sluggable configuration array for this model.
