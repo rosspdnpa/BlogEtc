@@ -84,6 +84,10 @@ class Post extends Model implements SearchResultInterface
 		return $is_published_setting;
 	}
 
+	public function getIsPublishedRaw() {
+		return !!$this->getRawOriginal('is_published');
+	}
+
     /**
      * Return the sluggable configuration array for this model.
      */
