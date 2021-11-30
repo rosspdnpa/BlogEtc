@@ -28,6 +28,14 @@ use WebDevEtc\BlogEtc\Requests\DeleteBlogEtcPostRequest;
 use WebDevEtc\BlogEtc\Requests\UpdateBlogEtcPostRequest;
 use WebDevEtc\BlogEtc\Requests\UploadImageRequest;
 
+use Imagine\Gd\Image as ImagineImage;
+use Imagine\Image\Box;
+use Imagine\Image\ImagineInterface;
+use Imagine\Image\Metadata\MetadataBag;
+use Imagine\Image\Palette\RGB;
+use Imagine\Image\Point;
+use Imagine\Image\Palette\PaletteInterface;
+
 /**
  * Class UploadsService.
  */
@@ -191,27 +199,63 @@ class UploadsService
         $image_filename = $this->legacyGetImageFilename($suggested_title, $image_size_details, $photo);
         $destinationPath = $this->image_destination_path();
 
-        $resizedImage = Image::make($photo->getRealPath());
+        $resizedImage = ImagineImage::make($photo->getRealPath());
+
+	    $sourceSize = $resizedImage->getSize();
+	    // if $iamge_size_detail is a string (i.e. full) then we need the original w/h values
+	    $w = $sourceSize->getWidth();
+	    $h = $sourceSize->getHeight();
 
         if (is_array($image_size_details)) {
-            $w = $image_size_details['w'];
-            $h = $image_size_details['h'];
+	        // resize
+	        $targetWidth = $image_size_details['w'];
+	        $targetHeight = $image_size_details['h'];
+	        if (isset($image_size_details['crop']) && $image_size_details['crop']) {
 
-            if (isset($image_size_details['crop']) && $image_size_details['crop']) {
-                $resizedImage = $resizedImage->fit($w, $h);
-            } else {
-                $resizedImage = $resizedImage->resize($w, $h, static function ($constraint) {
-                    $constraint->aspectRatio();
-                });
-            }
+		        $this->box = new Box($targetWidth,$targetHeight);
+		        $image = $resizedImage;
+		        //original size
+		        $srcBox = $image->getSize();
+
+		        // We resize it to the target dimensions, but not if it makes the other side less than the target
+		        // i.e. if we try to scale to 150x150, and the source is 1024x768, we can't just shrink the width
+		        // otherwise the height will be less than 150.
+		        $widthProportion = ($targetWidth / $w);
+		        $resultantHeight = $widthProportion * $h;
+		        if($resultantHeight < $targetHeight) {
+
+			        $heightProportion = ($targetHeight / $h);
+			        $newThumbWidth = $heightProportion * $w;
+			        $newThumbHeight = $targetHeight;
+		        }
+		        else {
+			        $newThumbWidth = $targetWidth;
+			        $newThumbHeight = $resultantHeight;
+
+		        }
+		        $newThumbBox = new Box($newThumbWidth,$newThumbHeight);
+		        // Resize it, then crop it
+		        $image = $image->resize($newThumbBox);
+		        $cropBox = new Box($targetWidth,$targetHeight);
+		        $cropPoint = new Point(0,0);
+
+		        $image->crop($cropPoint, $cropBox)
+			        ->save($destinationPath . '/' . $image_filename, ['quality' => config("blogetc.image_quality", 90)]);
+
+		        $resizedImage = $image;
+
+
+	        } else {
+		        $resizedImage->resize($sourceSize->widen($targetWidth));
+		        $resizedImage->save($destinationPath . '/' . $image_filename, ['quality' => config("blogetc.image_quality", 90)]);
+	        }
         } elseif ('fullsize' === $image_size_details) {
-            $w = $resizedImage->width();
-            $h = $resizedImage->height();
+	        $resizedImage->save($destinationPath . '/' . $image_filename, ['quality' => config("blogetc.image_quality", 90)]);
         } else {
             throw new Exception('Invalid image_size_details value');
         }
 
-        $resizedImage->save($destinationPath.'/'.$image_filename, config('blogetc.image_quality', 80));
+        //$resizedImage->save($destinationPath.'/'.$image_filename, config('blogetc.image_quality', 80));
 
         event(new UploadedImage($image_filename, $resizedImage, $new_blog_post, __METHOD__));
 
