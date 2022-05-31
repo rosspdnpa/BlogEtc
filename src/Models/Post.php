@@ -78,7 +78,7 @@ class Post extends Model implements SearchResultInterface
 	public function getIsPublishedAttribute() {
 		$is_published_setting = $this->getRawOriginal('is_published');
 		$unpublish = $this->getRawOriginal('unpublish_on');
-		if($unpublish && $unpublish < date('d/m/Y H:i:s')) {
+		if($unpublish && \Carbon\Carbon::parse($unpublish)->lt(\Carbon\Carbon::now())) {
 			return FALSE;
 		}
 		return $is_published_setting;
