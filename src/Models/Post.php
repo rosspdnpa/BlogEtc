@@ -30,6 +30,7 @@ class Post extends Model implements SearchResultInterface
         'unpublish_on' => 'datetime',
         'is_published' => 'boolean',
         'is_featured' => 'boolean',
+        'is_sticky' => 'boolean',
     ];
     /**
      * @var array
@@ -53,6 +54,7 @@ class Post extends Model implements SearchResultInterface
         'is_published',
         'unpublish_on',
         'is_featured',
+        'is_sticky',
         'posted_at',
     ];
 
