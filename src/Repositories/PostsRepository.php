@@ -36,6 +36,7 @@ class PostsRepository
     public function indexPaginated(int $perPage = 10, int $categoryID = null): LengthAwarePaginator
     {
         $query = $this->query(true)
+            ->orderBy('is_sticky', 'desc')
             ->orderBy('posted_at', 'desc');
 
         if ($categoryID > 0) {
